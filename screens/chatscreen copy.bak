@@ -1,0 +1,263 @@
+//import 'dart:js';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_test/helpers/Username.dart';
+import 'package:firebase_test/helpers/database.dart';
+import 'package:firebase_test/helpers/shared.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+
+import 'chatpage.dart';
+
+class ChatScreen extends StatefulWidget {
+  @override
+  _ChatScreenState createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  Stream chatList;
+  DataService db = new DataService();
+  @override
+  void initState() {
+    getUserChatList();
+    super.initState();
+  }
+
+  getUserChatList() async {
+    Constants.myname = await SharedPref.getUserNameSharedPreferences();
+    Constants.myuid = await SharedPref.getUserIdSharedPreferences();
+    await db.getUserChatListStream(Constants.myuid).then((snapshot) {
+      setState(() {
+        chatList = snapshot;
+        print(snapshot);
+      });
+    });
+  }
+
+  Widget ChatList() {
+    return StreamBuilder(
+        stream: chatList,
+        builder: (context, snapshot) {
+          return snapshot.hasData
+              ? AnimationLimiter(
+                    child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: snapshot.data.docs.length,
+                    itemBuilder: (context, index) {
+                      //print(snapshot.data.docs[index].collections('chats').;
+
+                      return AnimationConfiguration.staggeredList(
+                                position: index,
+                                duration: Duration(seconds: 2),
+                                child: SlideAnimation(
+                                      verticalOffset: 50.0,
+                                      child: FadeInAnimation(
+                                        child: ChatTile(
+                              snapshot.data.docs[index]
+                                  .data()['chatRoomId']
+                                  .toString()
+                                  .replaceAll("_", "")
+                                  .replaceAll(Constants.myuid, ""),
+                              snapshot.data.docs[index].data()['lastMessage'],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+              )
+              : Container(child: Text('Waiting'));
+        });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        child: ChatList(),
+      ),
+    );
+  }
+}
+
+class ChatTile extends StatefulWidget {
+  String userId;
+  String lastMessage;
+  //bool isImage;
+  ChatTile(this.userId, this.lastMessage);
+  @override
+  _ChatTileState createState() => _ChatTileState();
+}
+
+class _ChatTileState extends State<ChatTile> {
+  String display_url;
+  String useremail;
+  Stream personstream;
+  var fsconnect = FirebaseFirestore.instance;
+  DataService db = new DataService();
+  @override
+  void initState() {
+    /*getUseremail(widget.username).then((value){
+      setState(() {
+        useremail = value;
+      });
+    });*/
+    getStream();
+    super.initState();
+  }
+
+  getStream() async {
+    await db.userSnap(widget.userId).then((snapshot) {
+      setState(() {
+        personstream = snapshot;
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder(
+        stream: personstream,
+        builder: (context, snapshot) {
+          return snapshot.hasData
+              ? friend_tile(snapshot.data.data()['username'],
+                  snapshot.data.data()['uid'], snapshot)
+              : Container(child: CircularProgressIndicator());
+        });
+  }
+
+  getChatRoomId(String a, String b) {
+    print(a.codeUnitAt(0));
+    print(b.codeUnitAt(0));
+    int i = 0;
+    //int j=0;
+    while (i < a.length && i < b.length) {
+      if (a.codeUnitAt(i) > b.codeUnitAt(i)) {
+        return "$a\_$b";
+      } else if (a.codeUnitAt(i) < b.codeUnitAt(i)) {
+        return "$b\_$a";
+      } else {
+        i++;
+      }
+    }
+    if (a.length > i) {
+      return "$a\_$b";
+    } else {
+      return "$b\_$a";
+    }
+  }
+
+  sendMessage(userId) async {
+    List<String> members = [Constants.myuid, userId];
+    String chatRoomId = getChatRoomId(Constants.myuid, userId);
+    Map<String, dynamic> chatRoomMap = {
+      'user': members,
+      'chatRoomId': chatRoomId
+    };
+    await db.createChatRoom(chatRoomId, chatRoomMap).then((value) {
+      print(chatRoomId);
+      print('done');
+      Navigator.push(context,
+          MaterialPageRoute(builder: (context) => ChatPage(chatRoomId)));
+    });
+  }
+
+  Widget friend_tile(username, userId, snapshot) {
+    try {
+      if (snapshot.data.data()['profile_url'] != null) {
+        display_url = snapshot.data.data()['profile_url'];
+        print(display_url);
+      } else {
+        display_url =
+            'https://raw.githubusercontent.com/juzer-patan/asset/master/download.png';
+      }
+    } catch (e) {
+      print(e);
+      display_url =
+          'https://raw.githubusercontent.com/juzer-patan/asset/master/download.png';
+    }
+    return 
+     Card(
+              
+              color: Colors.white,
+              shadowColor: Colors.black87,
+              elevation: 8,
+          //    shadowColor: Color,
+              child: Container(
+          height: 70,
+       //   padding: EdgeInsets.only(bottom: 4),
+          child: Column(
+            children: <Widget>[
+              Expanded(
+                child: ListTile(
+                  //leading: Container(child: Icon(Icons.account_circle),//color: //Colors.white24,
+                  leading: CircleAvatar(
+                      backgroundImage: display_url != null
+                          ? NetworkImage(display_url)
+                          : NetworkImage(
+                              'https://raw.githubusercontent.com/juzer-patan/asset/master/download.png'),
+                      radius: 25,
+                    ),
+                  
+
+                  title: Text(
+                    username,
+                    style: TextStyle(
+                      color: Colors.black87,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                      letterSpacing: 0.2
+                    ),
+                  ),
+                  onTap: () {
+                    sendMessage(userId);
+                  },
+                  subtitle: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: widget.lastMessage == null
+                        ? Row(
+                            //mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              Icon(
+                                Icons.image,
+                                size: 24,
+                                color: Colors.black87,
+                              ),
+
+                              Padding(
+                                padding: const EdgeInsets.all(5.0),
+                                child: Text(
+                                  'Photo',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.black87,
+                                    letterSpacing: 0.2
+                                  ),
+                                ),
+                              )
+                            ],
+                          )
+                        : Text(
+                            widget.lastMessage ?? ' ',
+                            style: TextStyle(
+                              color: Colors.black87,
+                              fontSize: 16,
+                              letterSpacing: 0.2
+                           //   fontWeight: FontWeight.w300,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+           /*   Container(
+                margin: EdgeInsets.only(left: 85),
+                height: 1.5,
+                width: 300,
+                color: Color(0xff145C9E),
+              ),*/
+            ],
+          ),
+        ),
+      
+    );
+  }
+}

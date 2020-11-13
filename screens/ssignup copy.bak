@@ -1,0 +1,143 @@
+//import 'dart:js';
+import 'dart:ui';
+
+import 'package:firebase_test/backend/auth.dart';
+import 'package:firebase_test/helpers/authenticate.dart';
+import 'package:firebase_test/helpers/shared.dart';
+import 'package:firebase_test/profile.dart';
+import 'package:firebase_test/widgets/widgets.dart';
+import 'package:flutter/material.dart';
+import 'package:firebase_test/helpers/shared.dart';
+
+class SignUp extends StatefulWidget {
+  Function toggle;
+  SignUp(this.toggle);
+  @override
+  _SignUpState createState() => _SignUpState();
+}
+
+class _SignUpState extends State<SignUp> {
+  final form_key = GlobalKey<FormState>();
+  AuthService auth = new AuthService();
+  TextEditingController emailEdittingController = new TextEditingController();
+  TextEditingController passwordEdittingController =
+      new TextEditingController();
+
+  signup() async {
+    if (form_key.currentState.validate()) {
+      await auth
+          .signUpwithEmailandPassword(
+              emailEdittingController.text, passwordEdittingController.text)
+          .then((value) {
+        if (value != null) {
+          print(value);
+          //SharedPref.saveLogInSharedPreferences(true);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder:
+              (context) => MyProfile(emailEdittingController.text,passwordEdittingController.text))
+          );
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: appBarMain(context),
+      body: Container(
+        padding: EdgeInsets.symmetric(horizontal: 25),
+        child: Column(
+          children: [
+            Spacer(),
+            Form(
+                key: form_key,
+                child: Column(
+                children: [
+                  TextFormField(
+                    validator: (val) {
+                      return RegExp(
+                                  r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
+                              .hasMatch(val)
+                          ? null
+                          : "Please enter valid email address";
+                    },
+                    style: simpleTextStyle(),
+                    controller: emailEdittingController,
+                    decoration: textFieldInputDecoration('Enter email address'),
+                  ),
+                  TextFormField(
+                    validator: (v) {
+                      return v.isEmpty || v.length < 6
+                          ? "Please enter password with 6 or more characters"
+                          : null;
+                    },
+                    style: simpleTextStyle(),
+                    controller: passwordEdittingController,
+                    decoration: textFieldInputDecoration('Enter email password'),
+                  ),
+                  SizedBox(
+                    height: 16,
+                  ),
+                  GestureDetector(
+                      onTap: (){
+                        signup();
+                      },
+                      child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(30),
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xff007EF4),
+                              const Color(0xff2A75BC)
+                            ],
+                          )),
+                      width: MediaQuery.of(context).size.width,
+                      child: Text(
+                        'SIGN UP',
+                        style: biggerTextStyle(),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    height: 16,
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Text(
+                        'Already have an account?',
+                        style: simpleTextStyle(),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          widget.toggle();
+                        },
+                        child: Container(
+                          child: Text(
+                            'SignIn Now',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      )
+                    ],
+                  )
+                ],
+              ),
+            ),
+            SizedBox(
+              height: 70,
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}

@@ -1,0 +1,269 @@
+//import 'dart:js';
+
+//import 'dart:js';
+
+//import 'dart:js';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_test/backend/auth.dart';
+import 'package:firebase_test/helpers/authenticate.dart';
+import 'package:firebase_test/helpers/database.dart';
+import 'package:firebase_test/helpers/shared.dart';
+import 'package:firebase_test/screens/chatscreen.dart';
+import 'package:firebase_test/screens/friends.dart';
+import 'package:firebase_test/screens/images.dart';
+import 'package:firebase_test/screens/request.dart';
+//import 'package:firebase_test/screens/requests.dart';
+import 'package:firebase_test/widgets/widgets.dart';
+import 'package:flutter/material.dart';
+import 'package:firebase_test/helpers/Username.dart';
+
+import 'edit_profile.dart';
+
+class UserHome extends StatefulWidget {
+  @override
+  _UserHomeState createState() => _UserHomeState();
+}
+
+class _UserHomeState extends State<UserHome> {
+  var isFriend;
+  String email;
+  String name;
+  Stream profile;
+  String display_url;
+  AuthService auth = new AuthService();
+  DataService db = new DataService();
+  var fsconnect = FirebaseFirestore.instance;
+  @override
+  void initState() {
+    getUserInfo();
+    // TODO: implement initState
+    super.initState();
+  }
+
+  getUserInfo() async {
+    Constants.myname = await SharedPref.getUserNameSharedPreferences();
+    Constants.myuid = await SharedPref.getUserIdSharedPreferences();
+    //Constants.myuid = "something_unique";
+    await db.userSnap(Constants.myuid).then((snap) {
+      profile = snap;
+    });
+
+    print(Constants.myname);
+    setState(() {});
+  }
+
+  signOut() async {
+    await auth.signOut().then((value) {
+      SharedPref.saveLogInSharedPreferences(false);
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (context) => Authenticate()));
+    });
+  }
+
+  List<String> categories = ['Messages', 'Friends', 'Requests'];
+  var selectedindex = 0;
+
+  Widget _profileImage() {
+    return StreamBuilder(
+        stream: profile,
+        builder: (context, snapshot) {
+          return snapshot.hasData
+              ? imageShow(snapshot)
+              : Center(child: CircularProgressIndicator());
+        });
+  }
+
+  Widget imageShow(snapshot) {
+    name = snapshot.data.data()['name'];
+    email = snapshot.data.data()['email'];
+    try {
+      if (snapshot.data.data()['profile_url'] != null) {
+        display_url = snapshot.data.data()['profile_url'];
+        print(display_url);
+      } else {
+        display_url =
+            'https://raw.githubusercontent.com/juzer-patan/asset/master/download.png';
+      }
+    } catch (e) {
+      print(e);
+      display_url =
+          'https://raw.githubusercontent.com/juzer-patan/asset/master/download.png';
+    }
+    return Container(
+      decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(60),
+          image: DecorationImage(
+              image: display_url != null
+                  ? NetworkImage(display_url)
+                  : NetworkImage(
+                      "https://raw.githubusercontent.com/juzer-patan/asset/master/download.png"),
+              fit: BoxFit.cover)),
+      //height: 50,
+      height: MediaQuery.of(context).size.height * 0.15,
+      width: MediaQuery.of(context).size.width * 0.25,
+      //child: path != null ? Image.file(path,) : Text('Image'),
+    );
+  }
+
+  Widget _plusIcon() {
+    return Positioned(
+      bottom: MediaQuery.of(context).size.height * 0.05,
+      //bottom: 30,
+      child: Container(
+          //alignment: Alignment.bottomCenter,
+          height: 25,
+          width: 25,
+          decoration: BoxDecoration(
+              color: Colors.green, borderRadius: BorderRadius.circular(15.0)),
+          child: Icon(
+            Icons.add,
+            color: Colors.white,
+            size: 25.0,
+          )),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    List<dynamic> lst = [
+      ChatScreen(),
+    ];
+    var scaff = Scaffold(
+        
+        endDrawer: Drawer(
+          child: ListView(
+            children: [
+              DrawerHeader(
+                  //  curve: Curves.easeInCubic,
+                  padding: EdgeInsets.symmetric(
+                      horizontal: MediaQuery.of(context).size.width * 0.25,
+                      vertical: 15),
+                  decoration: BoxDecoration(
+                    //color: Color(0xff007EF4),
+                    gradient: LinearGradient(colors: [
+                      const Color(0xff007EF4),
+                      const Color(0xff2A75BC)
+                    ]),
+                    //borderRadius: BorderRadius.circular(10)
+                  ),
+                  child: Stack(
+                    children: [
+                      _profileImage(),
+                      _plusIcon(),
+                      Positioned(
+                        bottom: 0,
+                        left: MediaQuery.of(context).size.width * 0.05,
+                        child: Text(
+                          '@' + Constants.myname,
+                          textAlign: TextAlign.start,
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white),
+                        ),
+                      )
+                    ],
+                  )),
+              ListTile(
+                onTap: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => EditProfile(
+                              display_url,
+                              Constants.myuid,
+                              name,
+                              Constants.myname,
+                              email)));
+                },
+                leading: Icon(
+                  Icons.edit,
+                  size: 30,
+                ),
+                title: Text(
+                  'Edit Profile',
+                  style: TextStyle(fontSize: 18),
+                ),
+              ),
+              ListTile(
+                onTap: () {
+                  signOut();
+                },
+                leading: Icon(
+                  Icons.exit_to_app,
+                  size: 30,
+                ),
+                title: Text(
+                  'Log Out',
+                  style: TextStyle(fontSize: 18),
+                ),
+              )
+            ],
+          ),
+        ),
+        appBar: AppBar(
+            title: Text('Social Chat'),
+            elevation: 0.0,
+            centerTitle: false,
+            flexibleSpace: Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+           begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+             const Color(0xff007EF4), const Color(0xff2A75BC)]
+        )
+      ),
+    ),
+            /*actions: [
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 5),
+              child: IconButton(
+                  icon: Icon(Icons.exit_to_app),
+                  onPressed: () {
+                    signOut();
+                  }),
+            ),
+          ],*/
+            bottom: TabBar(
+                labelColor: Color(0xff145C9E),
+                unselectedLabelColor: Colors.white70,
+                indicatorSize: TabBarIndicatorSize.label,
+                indicator: BoxDecoration(
+                    borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(10),
+                        topRight: Radius.circular(10)),
+                    color: Colors.white),
+                tabs: [
+                  Tab(
+                    child: Align(
+                      alignment: Alignment.center,
+                      child: Text("MESSAGES"),
+                    ),
+                  ),
+                  Tab(
+                    child: Align(
+                      alignment: Alignment.center,
+                      child: Text("REQUESTS"),
+                    ),
+                  ),
+                  Tab(
+                    child: Align(
+                      alignment: Alignment.center,
+                      child: Text("FRIENDS"),
+                    ),
+                  ),
+                ]
+            ),
+            //]),
+            ),
+        body: TabBarView(children: [
+          ChatScreen(),
+          FriendScreen(),
+          RequestScreen(),
+      //    ImageScreen(),
+        ]));
+    return DefaultTabController(length: 3, child: scaff);
+  }
+}
