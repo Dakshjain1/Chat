@@ -396,7 +396,7 @@ class _MapNavState extends State<MapNav> {
 
 class GoogleMapsServices{
 
-  String googleApiKey = "AIzaSyD1QQwpp3kGQlPLkYBdwXO59iDkQBwYoQ8";
+  String googleApiKey = "";
   Future<String> getRouteCoordinates(LatLng l1, LatLng l2)async{
     String url = "https://maps.googleapis.com/maps/api/directions/json?origin=${l1.latitude},${l1.longitude}&destination=${l2.latitude},${l2.longitude}&key=$googleApiKey";
     http.Response response = await http.get(url);
